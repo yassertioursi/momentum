@@ -34,7 +34,7 @@ class NotificationService {
   static Future<bool> requestPermission() async {
     final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    
+
     if (androidPlugin != null) {
       final granted = await androidPlugin.requestNotificationsPermission();
       return granted ?? false;
@@ -42,7 +42,7 @@ class NotificationService {
 
     final iosPlugin = _notifications.resolvePlatformSpecificImplementation<
         IOSFlutterLocalNotificationsPlugin>();
-    
+
     if (iosPlugin != null) {
       final granted = await iosPlugin.requestPermissions(
         alert: true,
@@ -187,7 +187,8 @@ class NotificationService {
   ];
 
   static String getRandomMotivationalMessage() {
-    final index = DateTime.now().millisecondsSinceEpoch % motivationalMessages.length;
+    final index =
+        DateTime.now().millisecondsSinceEpoch % motivationalMessages.length;
     return motivationalMessages[index];
   }
 

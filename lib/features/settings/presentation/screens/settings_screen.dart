@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../services/hive_service.dart';
-import '../../../../services/notification_service.dart';
+import '../../../../domain/repositories/habit_repository.dart';
+import '../../../../domain/repositories/settings_repository.dart';
+import '../../../../injection_container.dart';
+import '../../../../data/datasources/local/notification_service.dart';
 import '../../../theme/presentation/bloc/app_theme_cubit.dart';
 import '../../../home/presentation/bloc/home_cubit.dart';
 
@@ -19,7 +21,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _notificationsEnabled = HiveService.getSettings().notificationsEnabled;
+    _notificationsEnabled =
+        sl.get<SettingsRepository>().getSettings().notificationsEnabled;
   }
 
   Future<void> _requestNotificationPermission() async {
@@ -78,8 +81,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() {
                 _notificationsEnabled = value;
               });
-              final settings = HiveService.getSettings();
-              await HiveService.saveSettings(
+              final settingsIt = sl.get<SettingsRepository>();
+              final settings = settingsIt.getSettings();
+              await settingsIt.saveSettings(
                 settings.copyWith(notificationsEnabled: value),
               );
               if (!value) {
@@ -230,8 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () async {
-              await HiveService.habitsBox.clear();
-              await HiveService.completionsBox.clear();
+              await sl.get<HabitRepository>().clearAllData();
 
               if (context.mounted) {
                 Navigator.pop(context);

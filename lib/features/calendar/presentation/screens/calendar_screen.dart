@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../models/habit.dart';
-import '../../../../services/hive_service.dart';
+import '../../../../domain/entities/habit.dart';
+import '../../../../domain/repositories/habit_repository.dart';
+import '../../../../injection_container.dart';
 import '../bloc/calendar_cubit.dart';
 import '../../../home/presentation/bloc/home_cubit.dart';
 
@@ -184,7 +185,8 @@ class _HeatmapView extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final now = DateTime.now();
-    final habits = HiveService.getAllHabits();
+    final habitRepository = sl.get<HabitRepository>();
+    final habits = habitRepository.getAllHabits();
 
     // Generate data for the last 12 weeks (84 days)
     final weeks = <List<_DayData>>[];
@@ -200,10 +202,10 @@ class _HeatmapView extends StatelessWidget {
         
         if (habitId != null) {
           // Single habit
-          final habit = HiveService.getHabit(habitId!);
+          final habit = habitRepository.getHabit(habitId!);
           if (habit != null && _isScheduledForDay(habit, date.weekday)) {
             total = 1;
-            if (HiveService.getCompletionForHabitAndDate(habitId!, dateStr) != null) {
+            if (habitRepository.getCompletionForHabitAndDate(habitId!, dateStr) != null) {
               completed = 1;
             }
           }
@@ -212,7 +214,7 @@ class _HeatmapView extends StatelessWidget {
           for (var habit in habits) {
             if (_isScheduledForDay(habit, date.weekday)) {
               total++;
-              if (HiveService.getCompletionForHabitAndDate(habit.id, dateStr) != null) {
+              if (habitRepository.getCompletionForHabitAndDate(habit.id, dateStr) != null) {
                 completed++;
               }
             }
@@ -378,11 +380,12 @@ class _HeatmapCell extends StatelessWidget {
 
   void _showDayDetails(BuildContext context) {
     final dateStr = DateFormat('yyyy-MM-dd').format(dayData.date);
-    final habits = HiveService.getAllHabits();
+    final habitRepository = sl.get<HabitRepository>();
+    final habits = habitRepository.getAllHabits();
     final completedHabits = <Habit>[];
     
     for (var habit in habits) {
-      if (HiveService.getCompletionForHabitAndDate(habit.id, dateStr) != null) {
+      if (habitRepository.getCompletionForHabitAndDate(habit.id, dateStr) != null) {
         completedHabits.add(habit);
       }
     }
@@ -492,9 +495,10 @@ class _MonthSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final now = DateTime.now();
+    final habitRepository = sl.get<HabitRepository>();
     final habits = habitId != null
-        ? [HiveService.getHabit(habitId!)].whereType<Habit>().toList()
-        : HiveService.getAllHabits();
+        ? [habitRepository.getHabit(habitId!)].whereType<Habit>().toList()
+        : habitRepository.getAllHabits();
 
     int totalScheduled = 0;
     int totalCompleted = 0;
@@ -505,7 +509,7 @@ class _MonthSummary extends StatelessWidget {
         if (_isScheduledForDay(habit, date.weekday)) {
           totalScheduled++;
           final dateStr = DateFormat('yyyy-MM-dd').format(date);
-          if (HiveService.getCompletionForHabitAndDate(habit.id, dateStr) != null) {
+          if (habitRepository.getCompletionForHabitAndDate(habit.id, dateStr) != null) {
             totalCompleted++;
           }
         }

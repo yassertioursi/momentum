@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/stat_card.dart';
-import '../../../../models/habit.dart';
-import '../../../../services/streak_service.dart';
+import '../../../../domain/entities/habit.dart';
+import '../../../../domain/services/streak_service.dart';
+import '../../../../injection_container.dart';
 import '../bloc/analytics_cubit.dart';
 import '../../../home/presentation/bloc/home_cubit.dart';
 
@@ -44,6 +45,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> with WidgetsBindingOb
 
     final theme = Theme.of(context);
     final habits = homeState.habits;
+    final streakService = sl.get<StreakService>();
 
     // Calculate overall stats
     int totalHabits = habits.length;
@@ -52,9 +54,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> with WidgetsBindingOb
     int totalCurrentStreaks = 0;
 
     for (var habit in habits) {
-      totalCompletions += StreakService.getTotalCompletions(habit.id);
-      avgCompletionRate += StreakService.getCompletionRate(habit.id, days: timeRange);
-      totalCurrentStreaks += StreakService.calculateCurrentStreak(habit);
+      totalCompletions += streakService.getTotalCompletions(habit.id);
+      avgCompletionRate +=
+          streakService.getCompletionRate(habit.id, days: timeRange);
+      totalCurrentStreaks += streakService.calculateCurrentStreak(habit);
     }
 
     if (totalHabits > 0) {
@@ -237,10 +240,12 @@ class _HabitPerformanceCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final habitColor = Color(habit.colorValue);
-    final completionRate = StreakService.getCompletionRate(habit.id, days: days);
-    final currentStreak = StreakService.calculateCurrentStreak(habit);
-    final longestStreak = StreakService.calculateLongestStreak(habit);
-    final totalCompletions = StreakService.getTotalCompletions(habit.id);
+    final streakService = sl.get<StreakService>();
+    final completionRate =
+        streakService.getCompletionRate(habit.id, days: days);
+    final currentStreak = streakService.calculateCurrentStreak(habit);
+    final longestStreak = streakService.calculateLongestStreak(habit);
+    final totalCompletions = streakService.getTotalCompletions(habit.id);
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),

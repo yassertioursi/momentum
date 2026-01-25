@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/buttons.dart';
-import '../../../../models/habit.dart';
-import '../../../../services/hive_service.dart';
+import '../../../../domain/entities/habit.dart';
+import '../../../../domain/repositories/habit_repository.dart';
+import '../../../../injection_container.dart';
 
 class CreateHabitScreen extends StatefulWidget {
   final Habit? habitToEdit;
@@ -107,7 +108,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       createdAt: widget.habitToEdit?.createdAt ?? DateTime.now(),
     );
 
-    await HiveService.saveHabit(habit);
+    await sl.get<HabitRepository>().saveHabit(habit);
     if (mounted) {
       Navigator.pop(context);
     }
@@ -449,7 +450,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
           ),
           TextButton(
             onPressed: () async {
-              await HiveService.deleteHabit(widget.habitToEdit!.id);
+              await sl.get<HabitRepository>().deleteHabit(widget.habitToEdit!.id);
               if (mounted) {
                 Navigator.pop(context); // Close dialog
                 Navigator.pop(context); // Go back

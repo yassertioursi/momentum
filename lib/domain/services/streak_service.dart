@@ -1,10 +1,16 @@
-import '../models/habit.dart';
-import '../models/habit_completion.dart';
-import '../services/hive_service.dart';
+import 'package:flutter/foundation.dart';
+import '../entities/habit.dart';
+import '../entities/habit_completion.dart';
+import '../repositories/habit_repository.dart';
 
 class StreakService {
-  static int calculateCurrentStreak(Habit habit) {
-    final completions = HiveService.getCompletionsForHabit(habit.id);
+  final HabitRepository _habitRepository;
+
+  StreakService({required HabitRepository habitRepository})
+      : _habitRepository = habitRepository;
+
+  int calculateCurrentStreak(Habit habit) {
+    final completions = _habitRepository.getCompletionsForHabit(habit.id);
     if (completions.isEmpty) return 0;
 
     // Sort completions by date descending
@@ -37,7 +43,8 @@ class StreakService {
     return _calculateStreakFromDate(completions, today);
   }
 
-  static int _calculateStreakFromDate(List<HabitCompletion> completions, DateTime fromDate) {
+  int _calculateStreakFromDate(
+      List<HabitCompletion> completions, DateTime fromDate) {
     if (completions.isEmpty) return 0;
 
     final completionDates = completions.map((c) => c.date).toSet();
@@ -63,8 +70,8 @@ class StreakService {
     return streak;
   }
 
-  static int calculateLongestStreak(Habit habit) {
-    final completions = HiveService.getCompletionsForHabit(habit.id);
+  int calculateLongestStreak(Habit habit) {
+    final completions = _habitRepository.getCompletionsForHabit(habit.id);
     if (completions.isEmpty) return 0;
 
     completions.sort((a, b) => a.date.compareTo(b.date));
@@ -74,8 +81,8 @@ class StreakService {
 
     if (sortedDates.isEmpty) return 0;
 
-    int longestStreak = 1;
-    int currentStreak = 1;
+    var longestStreak = 1;
+    var currentStreak = 1;
 
     for (int i = 1; i < sortedDates.length; i++) {
       final prevDate = DateTime.parse(sortedDates[i - 1]);
@@ -95,12 +102,12 @@ class StreakService {
     return longestStreak;
   }
 
-  static int getTotalCompletions(String habitId) {
-    return HiveService.getCompletionsForHabit(habitId).length;
+  int getTotalCompletions(String habitId) {
+    return _habitRepository.getCompletionsForHabit(habitId).length;
   }
 
-  static double getCompletionRate(String habitId, {int days = 30}) {
-    final habit = HiveService.getHabit(habitId);
+  double getCompletionRate(String habitId, {int days = 30}) {
+    final habit = _habitRepository.getHabit(habitId);
     if (habit == null) return 0;
 
     final now = DateTime.now();
@@ -112,7 +119,8 @@ class StreakService {
       if (_isScheduledForDay(habit, date.weekday)) {
         scheduledDays++;
         final dateStr = _formatDate(date);
-        final completion = HiveService.getCompletionForHabitAndDate(habitId, dateStr);
+        final completion =
+            _habitRepository.getCompletionForHabitAndDate(habitId, dateStr);
         if (completion != null) {
           completedDays++;
         }
@@ -123,7 +131,7 @@ class StreakService {
     return (completedDays / scheduledDays) * 100;
   }
 
-  static bool _isScheduledForDay(Habit habit, int dayOfWeek) {
+  bool _isScheduledForDay(Habit habit, int dayOfWeek) {
     switch (habit.frequencyType) {
       case 'daily':
         return true;
@@ -140,19 +148,20 @@ class StreakService {
     }
   }
 
-  static String _formatDate(DateTime date) {
+  String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  static bool isCompletedToday(String habitId) {
+  bool isCompletedToday(String habitId) {
     final now = DateTime.now();
     final todayStr = _formatDate(DateTime(now.year, now.month, now.day));
-    return HiveService.getCompletionForHabitAndDate(habitId, todayStr) != null;
+    return _habitRepository.getCompletionForHabitAndDate(habitId, todayStr) !=
+        null;
   }
 
-  static Map<int, int> getWeeklyCompletions(String habitId) {
+  Map<int, int> getWeeklyCompletions(String habitId) {
     final now = DateTime.now();
-    final completions = HiveService.getCompletionsForHabit(habitId);
+    final completions = _habitRepository.getCompletionsForHabit(habitId);
     final completionDates = completions.map((c) => c.date).toSet();
 
     final weeklyData = <int, int>{};
@@ -166,29 +175,33 @@ class StreakService {
     return weeklyData;
   }
 
-  static Map<String, int> getMonthlyCompletions(String habitId, {int months = 3}) {
+  Map<String, int> getMonthlyCompletions(String habitId, {int months = 3}) {
     final now = DateTime.now();
-    final completions = HiveService.getCompletionsForHabit(habitId);
+    final completions = _habitRepository.getCompletionsForHabit(habitId);
     final completionDates = completions.map((c) => c.date).toSet();
 
     final monthlyData = <String, int>{};
     for (int i = months - 1; i >= 0; i--) {
       final date = DateTime(now.year, now.month - i, 1);
       final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      
+
       int completedDays = 0;
       final daysInMonth = DateTime(date.year, date.month + 1, 0).day;
-      
+
       for (int day = 1; day <= daysInMonth; day++) {
-        final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+        final dateStr =
+            '${date.year}-${date.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
         if (completionDates.contains(dateStr)) {
           completedDays++;
         }
       }
-      
+
       monthlyData[monthKey] = completedDays;
     }
 
     return monthlyData;
   }
+
+  @visibleForTesting
+  String formatDate(DateTime date) => _formatDate(date);
 }

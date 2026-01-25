@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
-import '../../models/habit.dart';
-import '../../services/streak_service.dart';
+import '../../domain/entities/habit.dart';
+import '../../domain/services/streak_service.dart';
+import '../../injection_container.dart';
 
 class HabitCard extends StatefulWidget {
   final Habit habit;
@@ -60,7 +61,7 @@ class _HabitCardState extends State<HabitCard>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final habitColor = Color(widget.habit.colorValue);
-    final streak = StreakService.calculateCurrentStreak(widget.habit);
+    final streak = sl.get<StreakService>().calculateCurrentStreak(widget.habit);
 
     return AnimatedBuilder(
       animation: _scaleAnimation,

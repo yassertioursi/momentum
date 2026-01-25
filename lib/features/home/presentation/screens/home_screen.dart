@@ -6,7 +6,8 @@ import '../../../../core/widgets/animated_progress_ring.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../../core/widgets/habit_card.dart';
 import '../../../../core/widgets/stat_card.dart';
-import '../../../../services/hive_service.dart';
+import '../../../../domain/repositories/habit_repository.dart';
+import '../../../../injection_container.dart';
 import '../bloc/home_cubit.dart';
 import '../../../habit/presentation/screens/habit_details_screen.dart';
 import '../../../habit/presentation/screens/create_habit_screen.dart';
@@ -280,7 +281,9 @@ class _HomeScreenState extends State<HomeScreen>
                 int completed = 0;
                 final dateStr = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
                 for (var habit in homeState.habits) {
-                  if (HiveService.getCompletionForHabitAndDate(habit.id, dateStr) != null) {
+                  if (sl.get<HabitRepository>()
+                          .getCompletionForHabitAndDate(habit.id, dateStr) !=
+                      null) {
                     completed++;
                   }
                 }

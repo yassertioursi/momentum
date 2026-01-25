@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../services/hive_service.dart';
+import '../../../../domain/entities/user_settings.dart';
+import '../../../../domain/repositories/settings_repository.dart';
 
 class ThemeState {
   final bool isDarkMode;
@@ -23,8 +24,12 @@ class ThemeState {
 }
 
 class AppThemeCubit extends Cubit<ThemeState> {
-  AppThemeCubit() : super(const ThemeState()) {
-    final settings = HiveService.getSettings();
+  final SettingsRepository _settingsRepository;
+
+  AppThemeCubit({required SettingsRepository settingsRepository})
+      : _settingsRepository = settingsRepository,
+        super(const ThemeState()) {
+    final settings = _settingsRepository.getSettings();
     AppColors.setTheme(settings.themeType);
     emit(
       ThemeState(
@@ -36,16 +41,27 @@ class AppThemeCubit extends Cubit<ThemeState> {
 
   Future<void> setDarkMode(bool value) async {
     emit(state.copyWith(isDarkMode: value));
-    final settings = HiveService.getSettings();
-    await HiveService.saveSettings(settings.copyWith(isDarkMode: value));
+    final settings = _settingsRepository.getSettings();
+    await _settingsRepository.saveSettings(
+      settings.copyWith(isDarkMode: value),
+    );
   }
 
   Future<void> setThemeType(AppThemeType type) async {
     AppColors.setTheme(type);
     emit(state.copyWith(themeType: type));
-    final settings = HiveService.getSettings();
-    await HiveService.saveSettings(
+    final settings = _settingsRepository.getSettings();
+    await _settingsRepository.saveSettings(
       settings.copyWith(themeTypeIndex: type.index),
     );
   }
+
+  Future<void> completeOnboarding() async {
+    final settings = _settingsRepository.getSettings();
+    await _settingsRepository.saveSettings(
+      settings.copyWith(hasCompletedOnboarding: true),
+    );
+  }
+
+  UserSettings get settings => _settingsRepository.getSettings();
 }

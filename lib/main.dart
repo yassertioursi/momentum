@@ -3,13 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
+import 'domain/repositories/habit_repository.dart';
+import 'domain/repositories/settings_repository.dart';
+import 'domain/services/streak_service.dart';
+import 'data/datasources/local/hive_service.dart';
+import 'data/datasources/local/notification_service.dart';
 import 'features/theme/presentation/bloc/app_theme_cubit.dart';
 import 'features/home/presentation/bloc/home_cubit.dart';
 import 'features/onboarding/presentation/screens/splash_screen.dart';
 import 'features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'features/home/presentation/screens/main_navigation.dart';
-import 'services/hive_service.dart';
-import 'services/notification_service.dart';
+import 'injection_container.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,13 +25,14 @@ void main() async {
   );
 
   await HiveService.init();
+  setupDependencies();
   try {
     await NotificationService.init();
   } catch (e) {
     debugPrint('Notification init skipped: $e');
   }
 
-  final settings = HiveService.getSettings();
+  final settings = sl.get<SettingsRepository>().getSettings();
   AppColors.setTheme(settings.themeType);
 
   runApp(const MomentumApp());
@@ -40,8 +45,17 @@ class MomentumApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AppThemeCubit>(create: (_) => AppThemeCubit()),
-        BlocProvider<HomeCubit>(create: (_) => HomeCubit()..loadData()),
+        BlocProvider<AppThemeCubit>(
+          create: (_) => AppThemeCubit(
+            settingsRepository: sl.get<SettingsRepository>(),
+          ),
+        ),
+        BlocProvider<HomeCubit>(
+          create: (_) => HomeCubit(
+            habitRepository: sl.get<HabitRepository>(),
+            streakService: sl.get<StreakService>(),
+          )..loadData(),
+        ),
       ],
       child: const _AppRoot(),
     );
@@ -84,7 +98,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   }
 
   void _checkOnboarding() {
-    final settings = HiveService.getSettings();
+    final settings = context.read<AppThemeCubit>().settings;
     if (!settings.hasCompletedOnboarding) {
       setState(() {
         _showOnboarding = true;
@@ -99,11 +113,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   }
 
   void _onOnboardingComplete() async {
-    final settings = HiveService.getSettings();
-    await HiveService.saveSettings(settings.copyWith(hasCompletedOnboarding: true));
-    setState(() {
-      _showOnboarding = false;
-    });
+    await context.read<AppThemeCubit>().completeOnboarding();
+    if (mounted) {
+      setState(() {
+        _showOnboarding = false;
+      });
+    }
   }
 
   @override

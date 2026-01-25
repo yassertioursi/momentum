@@ -1,7 +1,10 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/habit.dart';
-import '../models/habit_completion.dart';
-import '../models/user_settings.dart';
+import '../../models/habit_model.dart';
+import '../../models/habit_completion_model.dart';
+import '../../models/user_settings_model.dart';
+import '../../../domain/entities/habit.dart';
+import '../../../domain/entities/habit_completion.dart';
+import '../../../domain/entities/user_settings.dart';
 
 class HiveService {
   static const String habitsBoxName = 'habits';
@@ -11,23 +14,25 @@ class HiveService {
 
   static Future<void> init() async {
     await Hive.initFlutter();
-    
+
     Hive.registerAdapter(HabitAdapter());
     Hive.registerAdapter(HabitCompletionAdapter());
     Hive.registerAdapter(UserSettingsAdapter());
-    
-    await Hive.openBox<Habit>(habitsBoxName);
-    await Hive.openBox<HabitCompletion>(completionsBoxName);
-    await Hive.openBox<UserSettings>(settingsBoxName);
+
+    await Hive.openBox<HabitModel>(habitsBoxName);
+    await Hive.openBox<HabitCompletionModel>(completionsBoxName);
+    await Hive.openBox<UserSettingsModel>(settingsBoxName);
   }
 
-  static Box<Habit> get habitsBox => Hive.box<Habit>(habitsBoxName);
-  static Box<HabitCompletion> get completionsBox => Hive.box<HabitCompletion>(completionsBoxName);
-  static Box<UserSettings> get settingsBox => Hive.box<UserSettings>(settingsBoxName);
+  static Box<HabitModel> get habitsBox => Hive.box<HabitModel>(habitsBoxName);
+  static Box<HabitCompletionModel> get completionsBox =>
+      Hive.box<HabitCompletionModel>(completionsBoxName);
+  static Box<UserSettingsModel> get settingsBox =>
+      Hive.box<UserSettingsModel>(settingsBoxName);
 
   // Habits
   static Future<void> saveHabit(Habit habit) async {
-    await habitsBox.put(habit.id, habit);
+    await habitsBox.put(habit.id, HabitModel.fromEntity(habit));
   }
 
   static List<Habit> getAllHabits() {
@@ -41,7 +46,8 @@ class HiveService {
   static Future<void> deleteHabit(String id) async {
     await habitsBox.delete(id);
     // Delete all completions for this habit
-    final completions = completionsBox.values.where((c) => c.habitId == id).toList();
+    final completions =
+        completionsBox.values.where((c) => c.habitId == id).toList();
     for (var completion in completions) {
       await completionsBox.delete(completion.id);
     }
@@ -49,7 +55,8 @@ class HiveService {
 
   // Completions
   static Future<void> saveCompletion(HabitCompletion completion) async {
-    await completionsBox.put(completion.id, completion);
+    await completionsBox
+        .put(completion.id, HabitCompletionModel.fromEntity(completion));
   }
 
   static Future<void> deleteCompletion(String id) async {
@@ -64,7 +71,8 @@ class HiveService {
     return completionsBox.values.where((c) => c.date == date).toList();
   }
 
-  static HabitCompletion? getCompletionForHabitAndDate(String habitId, String date) {
+  static HabitCompletion? getCompletionForHabitAndDate(
+      String habitId, String date) {
     try {
       return completionsBox.values.firstWhere(
         (c) => c.habitId == habitId && c.date == date,
@@ -84,7 +92,12 @@ class HiveService {
   }
 
   static Future<void> saveSettings(UserSettings settings) async {
-    await settingsBox.put(settingsKey, settings);
+    await settingsBox.put(settingsKey, UserSettingsModel.fromEntity(settings));
+  }
+
+  static Future<void> clearAllData() async {
+    await habitsBox.clear();
+    await completionsBox.clear();
   }
 
   // Seed data
@@ -165,13 +178,14 @@ class HiveService {
       final now = DateTime.now();
       for (var i = 0; i < 30; i++) {
         final date = now.subtract(Duration(days: i));
-        final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-        
+        final dateStr =
+            '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
         for (var habit in sampleHabits) {
           // Random completion based on habit type
           final dayOfWeek = date.weekday;
           bool shouldComplete = false;
-          
+
           if (habit.frequencyType == 'daily') {
             shouldComplete = true;
           } else if (habit.frequencyType == 'weekdays') {
@@ -181,11 +195,14 @@ class HiveService {
           } else if (habit.frequencyType == 'custom') {
             shouldComplete = habit.frequencyDays.contains(dayOfWeek);
           }
-          
+
           // Add some randomness to make it more realistic
           if (shouldComplete && i < 25) {
-            final random = DateTime.now().millisecondsSinceEpoch + i + habit.id.hashCode;
-            if (random % 3 != 0) { // ~67% completion rate
+            final random = DateTime.now().millisecondsSinceEpoch +
+                i +
+                habit.id.hashCode;
+            if (random % 3 != 0) {
+              // ~67% completion rate
               final completion = HabitCompletion(
                 id: '${habit.id}_$dateStr',
                 habitId: habit.id,

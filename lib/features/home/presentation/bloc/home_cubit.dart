@@ -1,8 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../models/habit.dart';
-import '../../../../models/habit_completion.dart';
-import '../../../../services/hive_service.dart';
-import '../../../../services/streak_service.dart';
+import '../../../../domain/entities/habit.dart';
+import '../../../../domain/entities/habit_completion.dart';
+import '../../../../domain/repositories/habit_repository.dart';
+import '../../../../domain/services/streak_service.dart';
 
 class HomeState {
   final List<Habit> habits;
@@ -45,30 +45,40 @@ class HomeState {
 }
 
 class HomeCubit extends Cubit<HomeState> {
-  HomeCubit() : super(const HomeState());
+  final HabitRepository _habitRepository;
+  final StreakService _streakService;
+
+  HomeCubit({
+    required HabitRepository habitRepository,
+    required StreakService streakService,
+  })  : _habitRepository = habitRepository,
+        _streakService = streakService,
+        super(const HomeState());
 
   void loadData() {
-    final habits = HiveService.getAllHabits();
+    final habits = _habitRepository.getAllHabits();
     final now = DateTime.now();
     final today =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    final todayCompletions = _habitRepository.getCompletionsForDate(today);
 
     final completions = <String, bool>{};
     int completedToday = 0;
     int activeStreaks = 0;
 
     for (var habit in habits) {
-      final isCompleted =
-          HiveService.getCompletionForHabitAndDate(habit.id, today) != null;
+      final isCompleted = todayCompletions.any((c) => c.habitId == habit.id);
       completions[habit.id] = isCompleted;
       if (isCompleted) completedToday++;
 
-      final streak = StreakService.calculateCurrentStreak(habit);
+      final streak = _streakService.calculateCurrentStreak(habit);
       if (streak > 0) activeStreaks++;
     }
 
     final totalHabits = habits.length;
-    final percentage = totalHabits > 0 ? (completedToday / totalHabits) * 100 : 0.0;
+    final percentage =
+        totalHabits > 0 ? (completedToday / totalHabits) * 100 : 0.0;
 
     emit(
       state.copyWith(
@@ -89,10 +99,10 @@ class HomeCubit extends Cubit<HomeState> {
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     final existingCompletion =
-        HiveService.getCompletionForHabitAndDate(habitId, today);
+        _habitRepository.getCompletionForHabitAndDate(habitId, today);
 
     if (existingCompletion != null) {
-      await HiveService.deleteCompletion(existingCompletion.id);
+      await _habitRepository.deleteCompletion(existingCompletion.id);
     } else {
       final completion = HabitCompletion(
         id: '${habitId}_$today',
@@ -100,7 +110,7 @@ class HomeCubit extends Cubit<HomeState> {
         completedAt: now,
         date: today,
       );
-      await HiveService.saveCompletion(completion);
+      await _habitRepository.saveCompletion(completion);
     }
 
     loadData();

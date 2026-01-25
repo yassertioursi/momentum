@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/animated_progress_ring.dart';
-import '../../../../models/habit.dart';
-import '../../../../services/hive_service.dart';
-import '../../../../services/streak_service.dart';
+import '../../../../domain/entities/habit.dart';
+import '../../../../domain/repositories/habit_repository.dart';
+import '../../../../domain/services/streak_service.dart';
+import '../../../../injection_container.dart';
 import 'create_habit_screen.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final habit = HiveService.getHabit(widget.habitId);
+    final habit = sl.get<HabitRepository>().getHabit(widget.habitId);
 
     if (habit == null) {
       return Scaffold(
@@ -29,12 +30,13 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
       );
     }
 
+    final streakService = sl.get<StreakService>();
     final habitColor = Color(habit.colorValue);
-    final currentStreak = StreakService.calculateCurrentStreak(habit);
-    final longestStreak = StreakService.calculateLongestStreak(habit);
-    final totalCompletions = StreakService.getTotalCompletions(widget.habitId);
-    final completionRate = StreakService.getCompletionRate(widget.habitId);
-    final weeklyData = StreakService.getWeeklyCompletions(widget.habitId);
+    final currentStreak = streakService.calculateCurrentStreak(habit);
+    final longestStreak = streakService.calculateLongestStreak(habit);
+    final totalCompletions = streakService.getTotalCompletions(widget.habitId);
+    final completionRate = streakService.getCompletionRate(widget.habitId);
+    final weeklyData = streakService.getWeeklyCompletions(widget.habitId);
 
     return Scaffold(
       body: CustomScrollView(
